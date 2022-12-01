@@ -10,6 +10,7 @@
 DP_SAVE_SYS_STACK		RMB	2
 DP_SAVE_USER_STACK	RMB	2
 DP_TEST_SVC_CTR		RMB 	4
+DP_SAVE_USER_STACK_IRQ	RMB	2
 
 ; "User DP"
 
@@ -19,6 +20,9 @@ DP_USER_TEST_CTR		RMB	4
 
 MACH_BEEB	equ	1
 
+KERNEL_STACK_TOP		equ	$7F80
+KERNEL_STACK_TOP_IRQ	equ	$8000
+
 ;---------------------------------------------------------------------------------------------------
 ; MOS ROM
 ;---------------------------------------------------------------------------------------------------
@@ -26,7 +30,7 @@ MACH_BEEB	equ	1
 
 handle_res	clra
 		tfr	a,dp
-		lds	#$8000
+		lds	#KERNEL_STACK_TOP
 
 		; memory map at this point should be MOS i.e. System RAM 0-7FFF, SW ROM, This boot ROM
 
@@ -176,22 +180,37 @@ handle_res	clra
 		lda	#2
 		sta	MMU_TASK_KEY	; set task 2 as task to swap to
 
-		; poke at hardware location
-		sta	$FE60
+
+		; initialise timer counter
+		clr	DP_TEST_SVC_CTR
+		clr	DP_TEST_SVC_CTR+1
+		clr	DP_TEST_SVC_CTR+2
+		clr	DP_TEST_SVC_CTR+3
+
+		; set SYSVIA timer 1 to do 100cs count like MOS and cause interrupts
+
+
+		lda	#$C0		
+		sta	sheila_SYSVIA_ier	; enable T1 interrupt
+		lda	#$60				; set system VIA ACR
+		sta	sheila_SYSVIA_acr			; 
+							; disable latching
+							; disable shift register
+							; T1 counter continuous interrupts
+							; T2 counter timed interrupt
+		lda	#$0e				; set system VIA T1 counter (Low)
+		sta	sheila_SYSVIA_t1ll			; 
+							; this becomes effective when T1 hi set
+		lda	#$27				; set T1 (hi) to &27 this sets T1 to &270E (9998 uS)
+		sta	sheila_SYSVIA_t1lh		; or 10msec, interrupts occur every 10msec therefore
+		sta	sheila_SYSVIA_t1ch		; 
+
 
 
 		orcc 	#$50		; disable interrupts as we will mess with stack		
 		sts	DP_SAVE_SYS_STACK
 		lds 	#$3ffd		; User stack!
 		jmp	MMU_RTI
-
-
-here		inc 	$0
-		inc	$3FFF
-		inc	$4000
-		inc	$BC30
-
-		jmp	here
 
 
 WAIT8		pshs	A,B,X,Y
@@ -300,8 +319,8 @@ handle_div0
 handle_swi3
 		; swi entry
 		orcc	#$50
-		sts	<DP_SAVE_USER_STACK
-		lds	<DP_SAVE_SYS_STACK
+		sts	>DP_SAVE_USER_STACK	; note force ABS addressing we haven't set DP!
+		lds	>DP_SAVE_SYS_STACK
 		andcc	#$AF
 
 		sta	,-S
@@ -325,8 +344,43 @@ handle_swi3
 
 handle_swi
 		rti
-handle_irq
-		rti
+handle_irq	sts	>DP_SAVE_USER_STACK_IRQ	; note force ABS addressing we haven't set DP!
+		lds	#KERNEL_STACK_TOP_IRQ
+		
+		clra
+		tfr	A,DP
+
+		lda	sheila_SYSVIA_ifr
+		bpl	hirq_not_sysvia
+
+		; for now just assume a timer irq
+		anda	#$7F
+		sta	sheila_SYSVIA_ifr		; clear ifr
+
+		inc	DP_TEST_SVC_CTR+3
+		bne	1F
+		inc	DP_TEST_SVC_CTR+2
+		bne	1F
+		inc	DP_TEST_SVC_CTR+1
+		bne	1F
+		inc	DP_TEST_SVC_CTR+0
+1
+		; print timer value
+		ldx	#40*23
+		lda	DP_TEST_SVC_CTR
+		jsr	HEX2
+		lda	DP_TEST_SVC_CTR+1
+		jsr	HEX2
+		lda	DP_TEST_SVC_CTR+2
+		jsr	HEX2
+		lda	DP_TEST_SVC_CTR+3
+		jsr	HEX2
+
+
+hirq_not_sysvia
+
+		lds	<DP_SAVE_USER_STACK_IRQ
+		jmp	MMU_RTI
 handle_nmi
 		rti
 

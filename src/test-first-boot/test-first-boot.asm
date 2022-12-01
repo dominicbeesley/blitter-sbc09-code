@@ -11,6 +11,7 @@ DP_SAVE_SYS_STACK		RMB	2
 DP_SAVE_USER_STACK	RMB	2
 DP_TEST_SVC_CTR		RMB 	4
 DP_SAVE_USER_STACK_IRQ	RMB	2
+DP_INKERNEL		RMB	1
 
 ; "User DP"
 
@@ -31,6 +32,8 @@ KERNEL_STACK_TOP_IRQ	equ	$8000
 handle_res	clra
 		tfr	a,dp
 		lds	#KERNEL_STACK_TOP
+		lda	#1
+		sta	DP_INKERNEL
 
 		; memory map at this point should be MOS i.e. System RAM 0-7FFF, SW ROM, This boot ROM
 
@@ -210,6 +213,7 @@ handle_res	clra
 		orcc 	#$50		; disable interrupts as we will mess with stack		
 		sts	DP_SAVE_SYS_STACK
 		lds 	#$3ffd		; User stack!
+		clr	DP_INKERNEL
 		jmp	MMU_RTI
 
 
@@ -319,16 +323,16 @@ handle_div0
 handle_swi3
 		; swi entry
 		orcc	#$50
+		tst	DP_INKERNEL
+		bne	1F
 		sts	>DP_SAVE_USER_STACK	; note force ABS addressing we haven't set DP!
 		lds	>DP_SAVE_SYS_STACK
-		andcc	#$AF
-
 		sta	,-S
-
 		clra
 		tfr	A,DP
-
 		lda	,S+
+1		inc	DP_INKERNEL		
+		andcc	#$AF
 
 
 		; print a hex string at X
@@ -338,9 +342,12 @@ handle_swi3
 		jsr	HEX2
 
 		orcc	#$50
+		dec	DP_INKERNEL
+		bne	1F			; we were already in the kernel so don't task switch or mess with stacks
 		sts	<DP_SAVE_SYS_STACK
 		lds	<DP_SAVE_USER_STACK
 		jmp	MMU_RTI
+1		RTI				
 
 handle_swi
 		rti
@@ -380,7 +387,12 @@ handle_irq	sts	>DP_SAVE_USER_STACK_IRQ	; note force ABS addressing we haven't se
 hirq_not_sysvia
 
 		lds	<DP_SAVE_USER_STACK_IRQ
+
+		; if this interrupt came from the kernel then just RTI, no task switch
+		tst	DP_INKERNEL
+		bne	1F
 		jmp	MMU_RTI
+1		RTI
 handle_nmi
 		rti
 

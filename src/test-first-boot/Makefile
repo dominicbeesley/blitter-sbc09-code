@@ -20,4 +20,4 @@ hostfs:: all
 	
 
 $(BUILD)/%.bin:	%.asm $(DEPS)
-	$(AS) $(ASFLAGS) -B -o $@ -l $(basename $@).lst $<
+	$(AS) $(ASFLAGS) -B -3 --define=NATIVE -o $@ -l $(basename $@).lst $<

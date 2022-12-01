@@ -35,6 +35,12 @@ handle_res	clra
 		lda	#1
 		sta	DP_INKERNEL
 
+	IF NATIVE
+		; ENTER NATIVE MODE
+		LDMD	#1
+	ENDIF
+
+
 		; memory map at this point should be MOS i.e. System RAM 0-7FFF, SW ROM, This boot ROM
 
 		; Reset hardware (taken from Tricky's test ROM)

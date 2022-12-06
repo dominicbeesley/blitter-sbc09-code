@@ -124,13 +124,13 @@ handle_res	clra
 
 		lda 	#0
 		sta	MMU_ACC_KEY
-		lda	#$88
+		lda	#$84
 		sta	MMU_MAP+MMU_16_0
-		lda	#$8A
+		lda	#$85
 		sta	MMU_MAP+MMU_16_4
-		lda	#$8C
+		lda	#$86
 		sta	MMU_MAP+MMU_16_8
-		lda	#$C6
+		lda	#$C3
 		sta	MMU_MAP+MMU_16_C
 
 		lda 	#MMU_CTL_ENMMU
@@ -158,7 +158,7 @@ ut0_r
 ut0		; this is the "bounce" task that is copied to 
 
 		; map in top page of RAM in supervisor task 
-		lda	#$8E
+		lda	#$87
 		sta	MMU_MAP+MMU_16_C
 
 		; call the kernel

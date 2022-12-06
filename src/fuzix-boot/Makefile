@@ -16,7 +16,6 @@ hostfs:: all
 	$(shell if [[ ! -d $(HOSTFS) ]]; then mkdir -p $(HOSTFS); fi)
 	cp $(TARGET_BIN) $(HOSTFS)
 	cp $(TARGET_INF) $(HOSTFS)
-	cp _21BOOT.* $(HOSTFS)
 	
 
 $(BUILD)/%.bin:	%.asm $(DEPS)

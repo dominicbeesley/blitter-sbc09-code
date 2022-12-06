@@ -120,17 +120,17 @@ handle_res	clra
 
 		; copy "bounce" code at chipram 0 onards
 
-		; set up task 0 to have SYS at top (this code), ChipRAM at ram 0-7FFF and SYS screen memory 8000-BFFF
+		; set up task 0 to have SYS at top (this code), ChipRAM at ram 0-BFFF and SYS screen memory C000-BFFF
 
 		lda 	#0
 		sta	MMU_ACC_KEY
-		lda	#$84
+		lda	#$88
 		sta	MMU_MAP+MMU_16_0
-		lda	#$85
+		lda	#$8A
 		sta	MMU_MAP+MMU_16_4
-		lda	#$86
+		lda	#$8C
 		sta	MMU_MAP+MMU_16_8
-		lda	#$C3
+		lda	#$C6
 		sta	MMU_MAP+MMU_16_C
 
 		lda 	#MMU_CTL_ENMMU
@@ -158,7 +158,7 @@ ut0_r
 ut0		; this is the "bounce" task that is copied to 
 
 		; map in top page of RAM in supervisor task 
-		lda	#$87
+		lda	#$8E
 		sta	MMU_MAP+MMU_16_C
 
 		; call the kernel
